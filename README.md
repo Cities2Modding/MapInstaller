@@ -1,41 +1,57 @@
 # MapInstaller
 
-**MapInstaller** is a handy mod for Cities Skylines 2 that simplifies the installation process of custom maps for your game. With this mod, you can easily add new maps to your Cities Skylines 2 experience, whether they are in separate folders or contained within ZIP files. This readme provides all the information you need to get started with MapInstaller.
+**MapInstaller** is a mod that simplifies the process of adding and updating custom maps in Cities Skylines 2. It supports both manual installations and those done through the Thunderstore.io app.
 
-**Note: MapInstaller is most useful for those who either copy the map into a subfolder within the BepInEx\plugins folder or use a launcher that does this automatically. If you manually download a map, you have the option to install it manually or simply drag it into the folder yourself. MapInstaller provides convenience for those who prefer an automated installation process but is not mandatory for manual installations.**
+## For Map Makers
 
-## Features
+MapInstaller is designed to assist you in deploying your maps easily to the community. Here's how to prepare your map for distribution:
 
-- **Automatic Map Installation:** MapInstaller will automatically detect and install custom maps from the `BepInEx\plugins` folder when you launch the game.
+### Preparing Your Map
 
-- **Flexible Map Locations:** To be detected by MapInstaller, maps should be located within a folder named "Maps" under the `BepInEx\plugins` directory. For example, a map should be in the following structure: `BepInEx\plugins\ExampleMap\Maps\`.
+1. **Folder Structure**:
+    - Place your `.cok` and `.cok.cid` map files directly inside a folder named after your map within `BepInEx\plugins`. For example: `BepInEx\plugins\YourMapName\`.
+    - Alternatively, you can create a subfolder named `Maps` inside your map's folder and place the map files there: `BepInEx\plugins\YourMapName\Maps\` (NOTE: App launchers often don't support subfolders or flatten the directory anyway).
 
-- **ZIP File Support:** MapInstaller can handle ZIP files containing maps. If you have a ZIP file in the `BepInEx\plugins` folder, it will automatically extract the maps from it, as long as the maps are located within a "Maps" folder within the ZIP file.
+2. **ZIP File Creation**:
+    - If you prefer distributing your map as a ZIP file, ensure that the `Maps` folder is included in the ZIP. The structure within the ZIP should mirror the `BepInEx\plugins` directory structure mentioned above.
 
-- **Automatic Updates:** MapInstaller will automatically detect changes and updates. When new versions of maps are deployed, MapInstaller will copy them over to the appropriate directories, ensuring you always have the latest version of your custom maps.
+3. **Testing**:
+    - Before distributing your map, test it with MapInstaller to ensure it installs and updates correctly.
 
-## Installation
+### Distribution
 
-1. **Install BepInEx 5:** MapInstaller requires BepInEx 5 to function. Ensure that you have BepInEx 5 installed and set up correctly before installing MapInstaller.
+- Upload your map to a mod sharing platform like [Thunderstore.io](https://thunderstore.io/) or any other preferred community distribution point.
 
-2. **Download MapInstaller:** You can download MapInstaller from the official distribution sources, either from our [GitHub repository](https://github.com/Cities2Modding/MapInstaller) or [Thunderstore.io](https://thunderstore.io/). Choose the download method that suits you best.
+## For End Users
 
-3. **Install MapInstaller:** Place the MapInstaller mod file into the `BepInEx\plugins` folder within your Cities Skylines 2 game directory.
+### Installing Maps
 
-4. **Organize Your Maps:** Ensure that custom maps are organized in folders within the `BepInEx\plugins` directory, following the structure: `BepInEx\plugins\YourMapName\Maps\`.
+If you're using the Thunderstore APP, installing maps is straightforward:
 
-5. **Launch the Game:** Start Cities Skylines 2, and MapInstaller will automatically detect and install the maps for you.
+1. **Install MapInstaller**:
+   - Download and install MapInstaller through the Thunderstore APP. This only needs to be done once.
 
-## Contributing
+2. **Install Maps**:
+   - Find and install your desired map(s) through the Thunderstore APP. The maps will automatically be installed or updated by MapInstaller when you run the game.
 
-We welcome contributions and feedback from the Cities Skylines 2 modding community. If you have suggestions, bug reports, or would like to contribute to the development of MapInstaller, please visit our [GitHub repository](https://github.com/Cities2Modding/MapInstaller).
+### Manual Installation (Advanced Users)
 
-## Support
+For manual installation without the use of Thunderstore or other app managers:
 
-If you encounter any issues or have questions regarding MapInstaller, please feel free to create a GitHub issue on our [repository](https://github.com/Cities2Modding/MapInstaller), and our team will be happy to assist you. Or join the Cities2Modding discord (link found on Thunderstore.io under Cities Skylines II).
+1. **Download the Map**:
+   - Obtain the map files and place them within the `BepInEx\plugins` directory, following the structure provided by the map maker.
+
+2. **Run the Game**:
+   - Start Cities Skylines 2 after placing the map files. MapInstaller will handle the rest.
+
+## Uninstallation
+
+MapInstaller does not currently support automatic uninstallation of maps. If you uninstall a map via the Thunderstore APP or other app managers, please manually remove the map files from the `BepInEx\plugins` directory to ensure they are not loaded by MapInstaller.
+
+## Support and Feedback
+
+For support or feedback, please create an issue on our [GitHub repository](https://github.com/Cities2Modding/MapInstaller), or join the conversation on the Cities2Modding discord (link on Thunderstore.io under Cities Skylines II).
 
 ## Acknowledgements
 
-A big thank you to the Cities Skylines modding community for their ongoing support and inspiration.
-
-We hope you enjoy using MapInstaller to enhance your Cities Skylines 2 gameplay with custom maps. Happy city-building!
+Thank you to the Cities Skylines modding community for your support, creativity, and enthusiasm. Happy building!

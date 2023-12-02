@@ -1,4 +1,5 @@
 ﻿using BepInEx.Logging;
+using Game.Areas;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,6 +20,7 @@ namespace MapInstaller
         static string GAME_PATH = Path.GetDirectoryName( UnityEngine.Application.dataPath );
         static string BEPINEX_PATH = Path.Combine( GAME_PATH, $"BepInEx{_S}plugins" );
         static string MAPS_PATH = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), $"AppData{_S}LocalLow{_S}Colossal Order{_S}Cities Skylines II{_S}Maps" );
+        static string THUNDERSTORE_PATH = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), $"AppData{_S}Roaming{_S}Thunderstore Mod Manager{_S}DataFolder{_S}CitiesSkylines2{_S}profiles" );
         static List<Action> _currentActions = new List<Action>( );
 
         private static ManualLogSource _logger;
@@ -30,22 +32,22 @@ namespace MapInstaller
         }
 
         /// <summary>
-        /// Scan all BepInEx plugin folders for maps directories
+        /// Scan all plugin folders for maps directories
         /// </summary>
         private void ScanDirectory( )
         {
-            _logger.LogInfo( "Scanning BepInEx folder..." );
 
             try
             {
-                foreach ( var directory in Directory.GetDirectories( BEPINEX_PATH ) )
-                {
-                    ProcessDirectory( directory );
-                }
+                _logger.LogInfo( "Scanning BepInEx folder..." );
+                ProcessSource( BEPINEX_PATH );
 
-                foreach ( var zipFile in Directory.GetFiles( BEPINEX_PATH, "*.zip", SearchOption.AllDirectories ) )
+                var thunderStorePath = GetActiveThunderstoreProfile( );
+
+                if ( !string.IsNullOrEmpty( thunderStorePath ) )
                 {
-                    ProcessZipFile( zipFile );
+                    _logger.LogInfo( $"Scanning Thunderstore folder '{thunderStorePath}'..." );
+                    ProcessSource( thunderStorePath );
                 }
 
                 // If no actions were queued there's no changes
@@ -61,6 +63,67 @@ namespace MapInstaller
             }
         }
 
+        /// <summary>
+        /// Get the active Thunderstore profile
+        /// </summary>
+        /// <returns></returns>
+        private string GetActiveThunderstoreProfile( )
+        {
+            if ( !Directory.Exists( THUNDERSTORE_PATH ) )
+                return null;
+
+            DateTime mostRecent = DateTime.MinValue;
+            var mostRecentProfile = string.Empty;
+
+            foreach ( var profileDirectory in Directory.GetDirectories( THUNDERSTORE_PATH ) )
+            {
+                var bepInExPath = Path.Combine( profileDirectory, $"BepInEx{_S}plugins" );
+
+                if ( Directory.Exists( bepInExPath ) )
+                {
+                    var mostRecentModified = GetMostRecentModifiedDate( bepInExPath );
+
+                    if ( mostRecentModified > mostRecent )
+                    {
+                        mostRecent = mostRecentModified;
+                        mostRecentProfile = bepInExPath;
+                    }
+                }
+            }
+
+            return mostRecentProfile;
+        }
+
+        /// <summary>
+        /// Gets the most recent date modified date
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <returns></returns>
+        /// <exception cref="DirectoryNotFoundException"></exception>
+        public DateTime GetMostRecentModifiedDate( string directory )
+        {
+            return Directory.GetFiles( directory, "*", SearchOption.AllDirectories )
+                                          .Select( file => new FileInfo( file ).LastWriteTime )
+                                          .OrderByDescending( date => date )
+                                          .FirstOrDefault( );
+        }
+
+        /// <summary>
+        /// Process a source directory
+        /// </summary>
+        /// <param name="sourceDirectory"></param>
+        private void ProcessSource( string sourceDirectory )
+        {
+            foreach ( var directory in Directory.GetDirectories( sourceDirectory ) )
+            {
+                ProcessDirectory( sourceDirectory, directory );
+            }
+
+            foreach ( var zipFile in Directory.GetFiles( sourceDirectory, "*.zip", SearchOption.AllDirectories ) )
+            {
+                ProcessZipFile( sourceDirectory, zipFile );
+            }
+        }
         /// <summary>
         /// Ensure the local maps folder exists
         /// </summary>
@@ -83,32 +146,74 @@ namespace MapInstaller
         /// <summary>
         /// Search directories for maps
         /// </summary>
+        /// <param name="sourceDirectory"></param>
         /// <param name="directory"></param>
-        private void ProcessDirectory( string directory )
+        private void ProcessDirectory( string sourceDirectory, string directory )
         {
+            if ( CheckDirectoryForMaps( directory, out var folderToUse ) &&
+                FolderHasChanges( folderToUse, MAPS_PATH ) )
+            {
+                var readableFolderString = Path.GetRelativePath( sourceDirectory, folderToUse );
+                _logger.LogInfo( $"Detected changes at '{readableFolderString}', queuing for copy..." );
+                _currentActions.Add( GenerateDirectoryCopyTask( sourceDirectory, folderToUse ) );
+            }
+        }
+
+        /// <summary>
+        /// Check a directory for the existence of a map
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <param name="outputFolder"></param>
+        /// <returns></returns>
+        private bool CheckDirectoryForMaps( string directory, out string outputFolder )
+        {
+            outputFolder = null;
+
+            // Check for maps directory
+
             var mapsFolder = Path.Combine( directory, "Maps" );
 
-            // If it has a maps folder we should do a copy!
-            if ( Directory.Exists( mapsFolder ) && FolderHasChanges( mapsFolder, MAPS_PATH ) )
+            if ( Directory.Exists( mapsFolder ) )
             {
-                var readableFolderString = Path.GetRelativePath( BEPINEX_PATH, mapsFolder );
-                _logger.LogInfo( $"Detected changes at '{readableFolderString}', queuing for copy..." );
-                _currentActions.Add( GenerateDirectoryCopyTask( mapsFolder ) );
+                outputFolder = mapsFolder;
+                return true;
             }
+
+            // Check for flattened map files
+            var mapIDFiles = Directory.GetFiles( directory, "*.cok.cid" );
+
+            if ( mapIDFiles.Length == 0 )
+                return false;
+
+            // Check if it has a matching map file
+            foreach ( var mapIDFile in mapIDFiles )
+            {
+                var fileName = Path.GetFileNameWithoutExtension( mapIDFile );
+                var mapFile = Path.Combine( Path.GetDirectoryName( mapIDFile ), fileName );
+
+                if ( File.Exists( mapFile ) )
+                {
+                    outputFolder = directory;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
         /// Search a ZIP file for any maps
         /// </summary>
+        /// <param name="sourceDirectory"></param>
         /// <param name="zipFilePath"></param>
-        private void ProcessZipFile( string zipFilePath )
+        private void ProcessZipFile( string sourceDirectory, string zipFilePath )
         {
-            var readableString = Path.GetRelativePath( BEPINEX_PATH, zipFilePath );
+            var readableString = Path.GetRelativePath( sourceDirectory, zipFilePath );
 
             if ( ZipFileHasChanges( zipFilePath, MAPS_PATH ) )
             {
                 _logger.LogInfo( $"Detected changes in map ZIP '{readableString}', queuing for copy..." );
-                _currentActions.Add( GenerateZipCopyTask( zipFilePath ) );
+                _currentActions.Add( GenerateZipCopyTask( sourceDirectory, zipFilePath ) );
             }
         }
 
@@ -139,9 +244,16 @@ namespace MapInstaller
         /// <returns></returns>
         private bool FolderHasChanges( string sourceFolder, string targetFolder )
         {
-            var sourceFiles = Directory.GetFiles( sourceFolder, "*.*" );
+            var cokIDFiles = Directory.GetFiles( sourceFolder, "*.cok.cid" );
+            var cokFiles = Directory.GetFiles( sourceFolder, "*.cok" );
 
-            foreach ( var sourceFile in sourceFiles )
+            if ( cokIDFiles.Length == 0 || cokFiles.Length == 0 )
+                return false;
+
+            var allFiles = cokIDFiles.ToList( );
+            allFiles.AddRange( cokFiles );
+
+            foreach ( var sourceFile in allFiles )
             {
                 var fileName = Path.GetFileName( sourceFile );
                 var targetFile = Path.Combine( targetFolder, fileName );
@@ -171,7 +283,8 @@ namespace MapInstaller
                 foreach ( var entry in archive.Entries )
                 {
                     // Skip if the entry is a directory or does not contain the 'Maps' folder in its path
-                    if ( entry.FullName.EndsWith( "/" ) || !entry.FullName.ToLowerInvariant( ).Contains( "maps/" ) )
+                    if ( entry.FullName.EndsWith( "/" ) || !entry.FullName.ToLowerInvariant( ).Contains( "maps/" )
+                        || ( !entry.FullName.ToLowerInvariant( ).EndsWith( ".cok" ) || entry.FullName.ToLowerInvariant( ).EndsWith( ".cok.cid" ) ))
                         continue;
 
                     // Extract the relative path of the file within the 'Maps' directory in the ZIP archive
@@ -255,20 +368,26 @@ namespace MapInstaller
         /// Generate copy tasks for a specific map folder
         /// </summary>
         /// <param name="sourceFolder"></param>
+        /// <param name="copyFolder"></param>
         /// <returns></returns>
-        private Action GenerateDirectoryCopyTask( string sourceFolder )
+        private Action GenerateDirectoryCopyTask( string sourceFolder, string copyFolder )
         {
             return ( ) =>
             {
                 try
                 {
-                    var readableFolderString = Path.GetRelativePath( BEPINEX_PATH, sourceFolder );
-                    var files = Directory.GetFiles( sourceFolder, "*.*" );
+                    var readableFolderString = Path.GetRelativePath( sourceFolder, copyFolder );
 
-                    if ( files.Length == 0 )
+                    var cokIDFiles = Directory.GetFiles( copyFolder, "*.cok.cid" );
+                    var cokFiles = Directory.GetFiles( copyFolder, "*.cok" );
+
+                    if ( cokIDFiles.Length == 0 && cokFiles.Length == 0 )
                         return;
 
-                    _logger.LogInfo( $"Copying '{files.Length}' from '{readableFolderString}'." );
+                    var files = cokIDFiles.ToList( );
+                    files.AddRange( cokFiles );
+
+                    _logger.LogInfo( $"Copying '{files.Count}' from '{readableFolderString}'." );
 
                     var progress = 0;
                     var complete = 0;
@@ -276,11 +395,11 @@ namespace MapInstaller
                     foreach ( var file in files )
                     {
                         if ( progress % 10 == 0 )
-                            _logger.LogInfo( $"Copying file {complete}/{files.Length}..." );
+                            _logger.LogInfo( $"Copying file {complete}/{files.Count}..." );
 
                         CopyFile( file, MAPS_PATH );
                         complete++;
-                        progress = ( int ) ( ( complete / ( decimal ) files.Length ) * 100 );
+                        progress = ( int ) ( ( complete / ( decimal ) files.Count ) * 100 );
                     }
 
                     _logger.LogInfo( $"Finished copying '{readableFolderString}'." );
@@ -295,15 +414,16 @@ namespace MapInstaller
         /// <summary>
         /// Generate copy tasks for maps located in ZIP files
         /// </summary>
+        /// <param name="sourceDirectory"></param>
         /// <param name="zipFilePath"></param>
         /// <returns></returns>
-        private Action GenerateZipCopyTask( string zipFilePath )
+        private Action GenerateZipCopyTask( string sourceDirectory, string zipFilePath )
         {
             return ( ) =>
             {
                 try
                 {
-                    var readableString = Path.GetRelativePath( BEPINEX_PATH, zipFilePath );
+                    var readableString = Path.GetRelativePath( sourceDirectory, zipFilePath );
 
                     _logger.LogInfo( $"Processing zip file '{readableString}'." );
 
@@ -311,7 +431,8 @@ namespace MapInstaller
                     {
                         // Filter out the relevant entries and count them
                         var relevantEntries = archive.Entries
-                            .Where( entry => entry.FullName.ToLower().Contains( "maps/" ) )
+                            .Where( entry => entry.FullName.ToLower().Contains( "maps/" ) 
+                            && ( entry.FullName.ToLowerInvariant().EndsWith( ".cok" ) || entry.FullName.ToLowerInvariant( ).EndsWith( ".cok.cid" ) ) )
                             .ToList( );
 
                         var totalEntries = relevantEntries.Count;
