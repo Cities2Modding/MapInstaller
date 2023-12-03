@@ -21,11 +21,11 @@ namespace MapInstaller
         static string BEPINEX_PATH = Path.Combine( GAME_PATH, $"BepInEx{_S}plugins" );
         static string MAPS_PATH = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), $"AppData{_S}LocalLow{_S}Colossal Order{_S}Cities Skylines II{_S}Maps" );
         static string THUNDERSTORE_PATH = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), $"AppData{_S}Roaming{_S}Thunderstore Mod Manager{_S}DataFolder{_S}CitiesSkylines2{_S}profiles" );
+        static string RMODMAN_PATH = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.UserProfile ), $"AppData{_S}Roaming{_S}r2modmanPlus-local{_S}CitiesSkylines2{_S}profiles" );
         static List<Action> _currentActions = new List<Action>( );
 
         private static ManualLogSource _logger;
         private static bool _hasErrors = false;
-        private static bool _isUsingThunderstore = false;
 
         internal Installer( ManualLogSource logger )
         {
@@ -52,7 +52,14 @@ namespace MapInstaller
                 {
                     _logger.LogInfo( $"Scanning Thunderstore folder '{thunderStorePath}'..." );
                     ProcessSource( thunderStorePath );
-                    _isUsingThunderstore = true;
+                }
+
+                var rModManPath = GetActiveRModManProfile( );
+
+                if ( !string.IsNullOrEmpty( rModManPath ) )
+                {
+                    _logger.LogInfo( $"Scanning rModMan folder '{rModManPath}'..." );
+                    ProcessSource( rModManPath );
                 }
 
                 // If no actions were queued there's no changes
@@ -69,18 +76,18 @@ namespace MapInstaller
         }
 
         /// <summary>
-        /// Get the active Thunderstore profile
+        /// Check for mod manager active path
         /// </summary>
         /// <returns></returns>
-        private string GetActiveThunderstoreProfile( )
+        private string GetActiveProfile( string path )
         {
-            if ( !Directory.Exists( THUNDERSTORE_PATH ) )
+            if ( !Directory.Exists( path ) )
                 return null;
 
             DateTime mostRecent = DateTime.MinValue;
             var mostRecentProfile = string.Empty;
 
-            foreach ( var profileDirectory in Directory.GetDirectories( THUNDERSTORE_PATH ) )
+            foreach ( var profileDirectory in Directory.GetDirectories( path ) )
             {
                 var bepInExPath = Path.Combine( profileDirectory, $"BepInEx{_S}plugins" );
 
@@ -97,6 +104,24 @@ namespace MapInstaller
             }
 
             return mostRecentProfile;
+        }
+
+        /// <summary>
+        /// Get the active Thunderstore profile
+        /// </summary>
+        /// <returns></returns>
+        private string GetActiveThunderstoreProfile( )
+        {
+            return GetActiveProfile( THUNDERSTORE_PATH );
+        }
+
+        /// <summary>
+        /// Get the active RModMan profile
+        /// </summary>
+        /// <returns></returns>
+        private string GetActiveRModManProfile( )
+        {
+            return GetActiveProfile( RMODMAN_PATH );
         }
 
         /// <summary>
@@ -534,7 +559,7 @@ namespace MapInstaller
 
             _logger.LogInfo( @"Map installer encountered errors trying to copy maps, " +
                 "for support please visit the Cities2Modding discord referencing the error." );
-            _logger.LogInfo( @"See BepInEx log file at: " + ( _isUsingThunderstore ? Path.Combine( GetActiveThunderstoreProfile(), "BepInEx" ) : BEPINEX_PATH ) );
+            _logger.LogInfo( @"See BepInEx log file at: 'BepInEx\plugins' folder.");
         }
 
         /// <summary>
