@@ -25,6 +25,7 @@ namespace MapInstaller
 
         private static ManualLogSource _logger;
         private static bool _hasErrors = false;
+        private static bool _isUsingThunderstore = false;
 
         internal Installer( ManualLogSource logger )
         {
@@ -39,8 +40,11 @@ namespace MapInstaller
 
             try
             {
-                _logger.LogInfo( "Scanning BepInEx folder..." );
-                ProcessSource( BEPINEX_PATH );
+                if ( Directory.Exists( BEPINEX_PATH ) )
+                {
+                    _logger.LogInfo( "Scanning BepInEx folder..." );
+                    ProcessSource( BEPINEX_PATH );
+                }
 
                 var thunderStorePath = GetActiveThunderstoreProfile( );
 
@@ -48,6 +52,7 @@ namespace MapInstaller
                 {
                     _logger.LogInfo( $"Scanning Thunderstore folder '{thunderStorePath}'..." );
                     ProcessSource( thunderStorePath );
+                    _isUsingThunderstore = true;
                 }
 
                 // If no actions were queued there's no changes
@@ -395,7 +400,7 @@ namespace MapInstaller
                     foreach ( var file in files )
                     {
                         if ( progress % 10 == 0 )
-                            _logger.LogInfo( $"Copying file {complete}/{files.Count}..." );
+                            _logger.LogInfo( $"Copying file {complete + 1}/{files.Count}..." );
 
                         CopyFile( file, MAPS_PATH );
                         complete++;
@@ -457,7 +462,7 @@ namespace MapInstaller
                             var progress = ( int ) ( ( complete / ( decimal ) totalEntries ) * 100 );
 
                             if ( progress % 10 == 0 )
-                                _logger.LogInfo( $"Extracting file {complete}/{totalEntries}..." );
+                                _logger.LogInfo( $"Extracting file {complete + 1}/{totalEntries}..." );
                         }
                     }
 
@@ -529,7 +534,7 @@ namespace MapInstaller
 
             _logger.LogInfo( @"Map installer encountered errors trying to copy maps, " +
                 "for support please visit the Cities2Modding discord referencing the error." );
-            _logger.LogInfo( @"See BepInEx log file at: " + BEPINEX_PATH );
+            _logger.LogInfo( @"See BepInEx log file at: " + ( _isUsingThunderstore ? Path.Combine( GetActiveThunderstoreProfile(), "BepInEx" ) : BEPINEX_PATH ) );
         }
 
         /// <summary>
