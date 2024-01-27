@@ -1,4 +1,4 @@
-﻿using BepInEx.Logging;
+using BepInEx.Logging;
 using Game.Areas;
 using System;
 using System.Collections.Generic;
@@ -121,7 +121,19 @@ namespace MapInstaller
         /// <returns></returns>
         private string GetActiveRModManProfile( )
         {
-            return GetActiveProfile( RMODMAN_PATH );
+
+            if ( Directory.Exists( RMODMAN_PATH ) )
+            {
+                return GetActiveProfile( RMODMAN_PATH );
+            }
+            else
+            {
+                String envVar = Environment.GetEnvironmentVariable( "DOORSTOP_INVOKE_DLL_PATH" );
+                String dllPath = Path.GetDirectoryName( envVar );
+                String profilesPath = Path.GetFullPath( Path.Combine( dllPath, "..", "..", ".." ) );
+
+                return GetActiveProfile( profilesPath );
+            }
         }
 
         /// <summary>
