@@ -61,4 +61,4 @@ For support or to share feedback, please open an issue on our [GitHub repository
 
 ## Acknowledgements
 
-A heartfelt thanks to the Cities Skylines modding community for your continuous support and innovation. Enjoy streamlining your city-building experience with MapInstaller!
+A heartfelt thanks to the Cities Skylines modding community for your continuous support and innovation. Enjoy streamlining your city-building experience with MapInstaller! Thank you to Gerbal (https://github.com/gerbal) for Linux bug fixes.
